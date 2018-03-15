@@ -1,34 +1,66 @@
+##############################################
+# G M P C a m Processing
+#
+# Are we able to count all the T-bar people?
+#
+# Jonas Walti => jonas.walti@gmail.com
+##############################################
+
+import sys
 import numpy as np
 import cv2
 from scipy.spatial import distance
+import time
+import json
 
 import Rider
 
-cap = cv2.VideoCapture('../media/video18-03-14_13-26-58-32.mkv')  # Open video file
+targetId = 0
 
-x = 220
-y = 500
-w = 250
-h = 250
+if len(sys.argv) > 1:
+    file_obj = open("../config/" + sys.argv[1])
+else:
+    file_obj  = open('../config/connection.json', 'r')
+
+streams = json.load(file_obj)
+
+cap = cv2.VideoCapture(streams[targetId]["path"])  # Open video file
+
+# processing area of full hd stream
+x = streams[targetId]["roi"]["x"]
+y = streams[targetId]["roi"]["y"]
+w = streams[targetId]["roi"]["w"]
+h = streams[targetId]["roi"]["h"]
+
+# minimum area to a a t-bar using human
 minArea = 50
 
+# array with all currently processed riders
 persons = []
 
+# real t-bar people
 realPersons = []
 
+# currently used id
 pid = 1
 
 realP = 0
+
+fps = -1
+fpsX = 1
+fpsCounter = 0
 
 fgbg = cv2.createBackgroundSubtractorMOG2(detectShadows=False)  # Create the background substractor
 
 kernelOp = np.ones((3, 3), np.uint8)
 kernelCl = np.ones((11, 11), np.uint8)
 
+start_time = time.time()
+
 while cap.isOpened():
 
     # read a frame
-    ret, frame = cap.read(1)
+    ret, frame = cap.read()
 
     if ret:
         fgmask = fgbg.apply(frame[y:y + h, x:x + w])  # Use the substractor
@@ -41,10 +73,10 @@ while cap.isOpened():
         # Closing (dilate -> erode)
         mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernelCl)
 
-        #visualize ROI
+        # visualize ROI
         frame[y:y + h, x:x + w, 1] = 0
 
-        #find countours
+        # find countours
         _, contours0, hierarchy = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
 
         for p in persons:
@@ -66,7 +98,7 @@ while cap.isOpened():
 
                 for p in persons:
 
-                    if len(p.tracks) > 5 and not p.get_pid() in realPersons:
+                    if len(p.tracks) > 15 and not p.get_pid() in realPersons:
                         M = distance.cdist(p.tracks, p.tracks, 'euclidean')
                         p.dist = M.max()
 
@@ -94,12 +126,22 @@ while cap.isOpened():
 
         frame = frame[300:800, 200:800]
 
-        cv2.putText(frame, "found" + str(len(persons)) + "pid " + str(pid) + " real P " + str(len(realPersons)), (200,20), cv2.FONT_HERSHEY_SIMPLEX, 1, 255)
+        cv2.putText(frame, "Active processing objects " + str(len(persons)), (20,20), cv2.FONT_HERSHEY_PLAIN, 1, 255)
+        cv2.putText(frame, "Total found objects " + str(pid), (20,40), cv2.FONT_HERSHEY_PLAIN, 1, 255)
+        cv2.putText(frame, "Detected T-bar riders " + str(len(realPersons)), (20,60), cv2.FONT_HERSHEY_PLAIN, 1, 255)
+        cv2.putText(frame, "FPS " + str(fps), (20, 80), cv2.FONT_HERSHEY_PLAIN, 1, 255)
 
         cv2.imshow('Frame', frame)
         #cv2.imshow('after morph',mask)
         #cv2.imshow('after binerization', imBin)
         #cv2.imshow('after Substraction',fgmask)
+
+        fpsCounter += 1
+
+        if (time.time() - start_time) > fpsX:
+            fps = round(fpsCounter / (time.time() - start_time))
+            fpsCounter = 0
+            start_time = time.time()
 
         # Abort and exit with 'Q' or ESC
         k = cv2.waitKey(30) & 0xff
@@ -109,5 +151,8 @@ while cap.isOpened():
     else:
         break
 
-cap.release()  # release video file
-cv2.destroyAllWindows()  # close all openCV windows
+# release video file
+cap.release()
+
+# close all windows
+cv2.destroyAllWindows()

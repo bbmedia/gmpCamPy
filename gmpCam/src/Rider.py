@@ -1,6 +1,5 @@
 from random import randint
 
-
 class MyRider:
 
     def __init__(self, i, xi, yi, max_age):
