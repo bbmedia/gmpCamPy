@@ -33,10 +33,14 @@ w = streams[targetId]["roi"]["w"]
 h = streams[targetId]["roi"]["h"]
 
 # live view
-liveX = streams[targetId]["liveView"]["x"]
-liveY = streams[targetId]["liveView"]["y"]
-liveW = streams[targetId]["liveView"]["w"]
-liveH = streams[targetId]["liveView"]["h"]
+liveViewSet = False
+
+if streams[targetId]["liveView"]:
+    liveViewSet = True
+    liveX = streams[targetId]["liveView"]["x"]
+    liveY = streams[targetId]["liveView"]["y"]
+    liveW = streams[targetId]["liveView"]["w"]
+    liveH = streams[targetId]["liveView"]["h"]
 
 # minimum area to a a t-bar using human
 minArea = 50
@@ -130,17 +134,18 @@ while cap.isOpened():
                     persons.append(p)
                     pid += 1
 
-        frame = frame[liveY:liveY+liveH, liveX:liveX+liveW]
+        if liveViewSet:
+            frame = frame[liveY:liveY+liveH, liveX:liveX+liveW]
 
-        cv2.putText(frame, "Active processing objects " + str(len(persons)), (20,20), cv2.FONT_HERSHEY_PLAIN, 1, 255)
-        cv2.putText(frame, "Total found objects " + str(pid), (20,40), cv2.FONT_HERSHEY_PLAIN, 1, 255)
-        cv2.putText(frame, "Detected T-bar riders " + str(len(realPersons)), (20,60), cv2.FONT_HERSHEY_PLAIN, 1, 255)
-        cv2.putText(frame, "FPS " + str(fps), (20, 80), cv2.FONT_HERSHEY_PLAIN, 1, 255)
+            cv2.putText(frame, "Active processing objects " + str(len(persons)), (20,20), cv2.FONT_HERSHEY_PLAIN, 1, 255)
+            cv2.putText(frame, "Total found objects " + str(pid), (20,40), cv2.FONT_HERSHEY_PLAIN, 1, 255)
+            cv2.putText(frame, "Detected T-bar riders " + str(len(realPersons)), (20,60), cv2.FONT_HERSHEY_PLAIN, 1, 255)
+            cv2.putText(frame, "FPS " + str(fps), (20, 80), cv2.FONT_HERSHEY_PLAIN, 1, 255)
 
-        cv2.imshow('Frame', frame)
-        #cv2.imshow('after morph',mask)
-        #cv2.imshow('after binerization', imBin)
-        #cv2.imshow('after Substraction',fgmask)
+            cv2.imshow('Frame', frame)
+            #cv2.imshow('after morph',mask)
+            #cv2.imshow('after binerization', imBin)
+            #cv2.imshow('after Substraction',fgmask)
 
         fpsCounter += 1
 
