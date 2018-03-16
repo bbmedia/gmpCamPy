@@ -15,9 +15,10 @@ import json
 
 import Rider
 
-targetId = 1
+targetId = 0
 
 if len(sys.argv) > 1:
+    print sys.argv[1]
     file_obj = open("../config/" + sys.argv[1])
 else:
     file_obj  = open('../config/connection.json', 'r')
@@ -31,16 +32,6 @@ x = streams[targetId]["roi"]["x"]
 y = streams[targetId]["roi"]["y"]
 w = streams[targetId]["roi"]["w"]
 h = streams[targetId]["roi"]["h"]
-
-# live view
-liveViewSet = False
-
-if streams[targetId]["liveView"]:
-    liveViewSet = True
-    liveX = streams[targetId]["liveView"]["x"]
-    liveY = streams[targetId]["liveView"]["y"]
-    liveW = streams[targetId]["liveView"]["w"]
-    liveH = streams[targetId]["liveView"]["h"]
 
 # minimum area to a a t-bar using human
 minArea = 50
@@ -134,18 +125,17 @@ while cap.isOpened():
                     persons.append(p)
                     pid += 1
 
-        if liveViewSet:
-            frame = frame[liveY:liveY+liveH, liveX:liveX+liveW]
+        #frame = frame[300:800, 200:800]
 
-            cv2.putText(frame, "Active processing objects " + str(len(persons)), (20,20), cv2.FONT_HERSHEY_PLAIN, 1, 255)
-            cv2.putText(frame, "Total found objects " + str(pid), (20,40), cv2.FONT_HERSHEY_PLAIN, 1, 255)
-            cv2.putText(frame, "Detected T-bar riders " + str(len(realPersons)), (20,60), cv2.FONT_HERSHEY_PLAIN, 1, 255)
-            cv2.putText(frame, "FPS " + str(fps), (20, 80), cv2.FONT_HERSHEY_PLAIN, 1, 255)
+        cv2.putText(frame, "Active processing objects " + str(len(persons)), (20,20), cv2.FONT_HERSHEY_PLAIN, 1, 255)
+        cv2.putText(frame, "Total found objects " + str(pid), (20,40), cv2.FONT_HERSHEY_PLAIN, 1, 255)
+        cv2.putText(frame, "Detected T-bar riders " + str(len(realPersons)), (20,60), cv2.FONT_HERSHEY_PLAIN, 1, 255)
+        cv2.putText(frame, "FPS " + str(fps), (20, 80), cv2.FONT_HERSHEY_PLAIN, 1, 255)
 
-            cv2.imshow('Frame', frame)
-            #cv2.imshow('after morph',mask)
-            #cv2.imshow('after binerization', imBin)
-            #cv2.imshow('after Substraction',fgmask)
+        cv2.imshow('Frame', frame)
+        #cv2.imshow('after morph',mask)
+        #cv2.imshow('after binerization', imBin)
+        #cv2.imshow('after Substraction',fgmask)
 
         fpsCounter += 1
 
