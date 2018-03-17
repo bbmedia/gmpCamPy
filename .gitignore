@@ -2,3 +2,5 @@
 *.pyc
 
 gmpCam/config/secretCon.json
+
+gmpCam/config/pwds.json

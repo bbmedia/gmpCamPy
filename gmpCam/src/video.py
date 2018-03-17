@@ -12,7 +12,8 @@ import cv2
 from scipy.spatial import distance
 import time
 import json
-
+import pymysql.cursors
+import pymysql
 import Rider
 
 targetId = 0
@@ -23,9 +24,19 @@ if len(sys.argv) > 1:
 else:
     file_obj  = open('../config/connection.json', 'r')
 
+settingsF = open('../config/general.json')
+settings = json.load(settingsF)
+
+pwdsF = open('../config/pwds.json')
+pwds = json.load(pwdsF)
+
 streams = json.load(file_obj)
 
-cap = cv2.VideoCapture(streams[targetId]["path"])  # Open video file
+try:
+    cap = cv2.VideoCapture(streams[targetId]["path"])  # Open video file
+except IndexError:
+    print "object index wrong! Stop everything!"
+    exit()
 
 # processing area of full hd stream
 x = streams[targetId]["roi"]["x"]
@@ -33,8 +44,21 @@ y = streams[targetId]["roi"]["y"]
 w = streams[targetId]["roi"]["w"]
 h = streams[targetId]["roi"]["h"]
 
-# minimum area to a a t-bar using human
+# live view
+liveViewSet = True
+try:
+    liveX = streams[targetId]["liveView"]["x"]
+    liveY = streams[targetId]["liveView"]["y"]
+    liveW = streams[targetId]["liveView"]["w"]
+    liveH = streams[targetId]["liveView"]["h"]
+    liveViewSet = True
+except KeyError:
+    liveViewSet = False
+
+# minimum area to a t-bar using human
 minArea = 50
+maxArea = 1000
+
 
 # array with all currently processed riders
 persons = []
@@ -45,18 +69,33 @@ realPersons = []
 # currently used id
 pid = 1
 
-realP = 0
-
+# performance measurement
 fps = -1
 fpsX = 1
 fpsCounter = 0
+start_time = time.time()
 
+# open cv background subtractor
 fgbg = cv2.createBackgroundSubtractorMOG2(detectShadows=False)  # Create the background substractor
 
+# convolution kernels
 kernelOp = np.ones((3, 3), np.uint8)
 kernelCl = np.ones((11, 11), np.uint8)
 
-start_time = time.time()
+# time measurements
+startMeasureForUpload = time.time()
+
+# stats upload
+toUploadP = 0
+uploadIntervalS = 20
+
+# Connect to the database
+connection = pymysql.connect(host=settings["sqlConnection"],
+                             user=settings["sqlUser"],
+                             password=pwds["sql"],
+                             db=settings["sqlDbName"],
+                             charset='utf8mb4',
+                             cursorclass=pymysql.cursors.DictCursor)
 
 while cap.isOpened():
 
@@ -83,11 +122,16 @@ while cap.isOpened():
         for p in persons:
             p.age_one()
 
+            if p.timed_out():
+                index = persons.index(p)
+                persons.pop(index)
+                del p
+
         for cnt in contours0:
 
             area = cv2.contourArea(cnt)
 
-            if minArea < area < 350:
+            if minArea < area < maxArea:
                 # cv2.drawContours(frame[y:y + h, x:x + w], cnt, -1, (0, 255, 0), 3, 8)
 
                 M = cv2.moments(cnt)
@@ -103,8 +147,10 @@ while cap.isOpened():
                         M = distance.cdist(p.tracks, p.tracks, 'euclidean')
                         p.dist = M.max()
 
+                        # simply check the minimal travelled dist
                         if p.dist > 80 and p.tracks[0][0] < p.tracks[-1][0]:
                             realPersons.append(p.get_pid())
+                            toUploadP +=1
 
                     if abs(cx - p.get_x()) <= ww and abs(cy - p.get_y()) <= hh:
                         new = False
@@ -114,11 +160,6 @@ while cap.isOpened():
                             cv2.circle(frame[y:y + h, x:x + w], (int(p.get_x()), int(p.get_y())), 5, (p.get_rgb()), -1)
                             img = cv2.rectangle(frame[y:y + h, x:x + w], (xx, yy), (xx + ww, yy + hh), (0, 255, 0), 2)
                             break;
-
-                    if p.timed_out():
-                        index = persons.index(p)
-                        persons.pop(index)
-                        del p
 
                 if new:
                     p = Rider.MyRider(pid, cx, cy, 5)
@@ -144,6 +185,21 @@ while cap.isOpened():
             fpsCounter = 0
             start_time = time.time()
 
+        if time.time() - startMeasureForUpload > uploadIntervalS and toUploadP > 0:
+
+            with connection.cursor() as cursor:
+                # Create a new record
+                sql = "INSERT INTO cam_tbar_counter (tb_counted, tb_is_demo) VALUES (%s, %s);"
+                cursor.execute(sql, (int(toUploadP), True))
+
+            # connection is not autocommit by default. So you must commit to save
+            # your changes.
+            connection.commit()
+
+            print "upload " + str(toUploadP)
+            toUploadP = 0;
+            startMeasureForUpload = time.time()
+
         # Abort and exit with 'Q' or ESC
         k = cv2.waitKey(30) & 0xff
         if k == 27:
@@ -157,3 +213,5 @@ cap.release()
 
 # close all windows
 cv2.destroyAllWindows()
+
+connection.close()
