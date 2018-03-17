@@ -11,6 +11,7 @@ import numpy as np
 import cv2
 from scipy.spatial import distance
 import time
+import datetime
 import json
 import pymysql.cursors
 import pymysql
@@ -44,6 +45,13 @@ y = streams[targetId]["roi"]["y"]
 w = streams[targetId]["roi"]["w"]
 h = streams[targetId]["roi"]["h"]
 
+autoStop = True
+
+try:
+    stopAt = datetime.time(settings["stopH"], settings["stopM"], settings["stopS"])
+except KeyError:
+    autoStop = False
+
 # live view
 liveViewSet = True
 try:
@@ -58,7 +66,6 @@ except KeyError:
 # minimum area to a t-bar using human
 minArea = 50
 maxArea = 1000
-
 
 # array with all currently processed riders
 persons = []
@@ -166,17 +173,18 @@ while cap.isOpened():
                     persons.append(p)
                     pid += 1
 
-        #frame = frame[300:800, 200:800]
+        if liveViewSet:
+            frame = frame[liveY:liveY + liveH, liveX:liveX + liveW]
 
-        cv2.putText(frame, "Active processing objects " + str(len(persons)), (20,20), cv2.FONT_HERSHEY_PLAIN, 1, 255)
-        cv2.putText(frame, "Total found objects " + str(pid), (20,40), cv2.FONT_HERSHEY_PLAIN, 1, 255)
-        cv2.putText(frame, "Detected T-bar riders " + str(len(realPersons)), (20,60), cv2.FONT_HERSHEY_PLAIN, 1, 255)
-        cv2.putText(frame, "FPS " + str(fps), (20, 80), cv2.FONT_HERSHEY_PLAIN, 1, 255)
+            cv2.putText(frame, "Active processing objects " + str(len(persons)), (20,20), cv2.FONT_HERSHEY_PLAIN, 1, 255)
+            cv2.putText(frame, "Total found objects " + str(pid), (20,40), cv2.FONT_HERSHEY_PLAIN, 1, 255)
+            cv2.putText(frame, "Detected T-bar riders " + str(len(realPersons)), (20,60), cv2.FONT_HERSHEY_PLAIN, 1, 255)
+            cv2.putText(frame, "FPS " + str(fps), (20, 80), cv2.FONT_HERSHEY_PLAIN, 1, 255)
 
-        cv2.imshow('Frame', frame)
-        #cv2.imshow('after morph',mask)
-        #cv2.imshow('after binerization', imBin)
-        #cv2.imshow('after Substraction',fgmask)
+            cv2.imshow('Frame', frame)
+            #cv2.imshow('after morph',mask)
+            #cv2.imshow('after binerization', imBin)
+            #cv2.imshow('after Substraction',fgmask)
 
         fpsCounter += 1
 
@@ -205,8 +213,15 @@ while cap.isOpened():
         if k == 27:
             break
 
+        if autoStop and stopAt < datetime.datetime.now().time():
+            break
+
     else:
+        print "error opening frame! "
         break
+
+d = datetime.datetime.now()
+print "stopping script " + d.strftime("%H:%M:%S %d.%m.%y")
 
 # release video file
 cap.release()

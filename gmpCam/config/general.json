@@ -1,5 +1,8 @@
 {
   "sqlConnection": "db55.netzone.ch",
   "sqlUser": "realboarder",
-  "sqlDbName": "realboarder"
+  "sqlDbName": "realboarder",
+  "stopH":17,
+  "stopM":0,
+  "stopS":0
 }
