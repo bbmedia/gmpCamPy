@@ -17,7 +17,7 @@ import pymysql.cursors
 import pymysql
 import Rider
 
-targetId = 0
+targetId = 1
 
 if len(sys.argv) > 1:
     print sys.argv[1]
@@ -218,7 +218,13 @@ while cap.isOpened():
 
     else:
         print "error opening frame! "
-        break
+        cap.release()
+        time.sleep(10)
+        try:
+            cap = cv2.VideoCapture(streams[targetId]["path"])
+        except:
+            print "cannot reopen stream. close app."
+            break
 
 d = datetime.datetime.now()
 print "stopping script " + d.strftime("%H:%M:%S %d.%m.%y")
