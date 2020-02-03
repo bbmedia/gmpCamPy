@@ -1,6 +1,5 @@
 .idea
 *.pyc
-
+gmpCam/venv
 gmpCam/config/secretCon.json
-
 gmpCam/config/pwds.json

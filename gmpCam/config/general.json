@@ -4,5 +4,6 @@
   "sqlDbName": "realboarder",
   "stopH":17,
   "stopM":0,
-  "stopS":0
+  "stopS":0,
+  "isDemo": true
 }
